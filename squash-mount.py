@@ -35,12 +35,23 @@ def executar1(cmd,debug=False,norun=False):
 executar=executar1
 
 def getmountpoint(expediente,imagem,particao):
+  item=''
+  if str(imagem['item']):
+    item="item"+str(imagem['item'])
+  tipo=''
+  if imagem['tipo']:
+    tipo = imagem['tipo']
+  id=''
+  if imagem['id']:
+    id=imagem['id']
+  nome=[item,tipo,id]
+  for x in range(nome.count('')):
+    nome.remove('')
+  nomestr='-'.join(nome)
   return os.path.join(expediente['basemnt'],
                       imagem['equipe'],
                       imagem['alvo'],
-                      "item"+str(imagem['item'])+ "-" +
-                      imagem['tipo'] + "-" +
-                      imagem['id'],
+                      nomestr,
                       particao['letra'])
 
 def mountpointexist(mountpoint):
@@ -81,11 +92,11 @@ def ensureddmounted(expediente,imagem,particao):
     return 0
 
 def ensuresquashmounted(expediente):
-  if not mountpointmounted(expediente['squashfile']):
+  if not mountpointmounted(expediente['squashmnt']):
     return executar("mount "+
                     expediente['squashfile'] + "\t" +
                     expediente['squashmnt'] + "\t" +
-                    "-o ro,umask=227,_netdev,noexec,uid=root,gid=root,loop")
+                    " -o ro,umask=227,_netdev,noexec,uid=root,gid=root,loop")
   else:
     return 0
                     
@@ -103,6 +114,8 @@ def main():
                help="list squash files")
   p.add_option('--listmnt', action='store_true',default=False,
                help="list mountpoints")
+  p.add_option('--listsquashmnt', action='store_true',default=False,
+               help="list squash mountpoints")
   p.add_option('--listdd', action='store_true',default=False,
                help="list dd images")
   p.add_option('--mountdd',action='store_true',default=False,
@@ -119,6 +132,9 @@ def main():
                help="checks if all partitions are mounted")
   p.add_option('--checkfiles',action='store_true',default=False,
                help="checks if all partitions have files")
+  p.add_option('--operacao',
+               default='',
+               help="only consider this operacao")
   p.add_option('--configfile', '-f',
                default="/etc/squash-mount/squash-mount.conf",
                help="defaults to /etc/squash-mount/squash-mount.conf")
@@ -130,6 +146,7 @@ def main():
   executar=functools.partial(executar1,debug=options.debug,norun=options.norun)
   if not(options.listsquash or
          options.listdd or
+         options.listsquashmnt or
          options.listmnt or
          options.mountdd or
          options.umountdd or
@@ -142,38 +159,42 @@ def main():
   else:
     readconfig(options.configfile)
     for filename,expediente in expedientes.iteritems():
-      if options.listsquash:
-        print(expediente['squashfile'])
-      if options.umountsquash:
-        result+=umount(expediente['squashfile'])
-      if options.mountsquash:
-        result+=ensuresquashmounted(expediente)
-      if options.checksquash:
-        if not mountpointmounted(expediente['squashfile']):
-          sys.stderr.write('squash file not mounted: '+
-                           expediente['squashfile']+"\n")
-          result+=1
+      if not options.operacao or options.operacao==expediente['operacao']:
+        if options.listsquash:
+          print(expediente['squashfile'])
+        if options.listsquashmnt:
+          print(expediente['squashmnt'])
+        if options.umountsquash:
+          result+=umount(expediente['squashfile'])
+        if options.mountsquash:
+          result+=ensuresquashmounted(expediente)
+        if options.checksquash:
+          if not mountpointmounted(expediente['squashmnt']):
+            sys.stderr.write('squash file not mounted: '+
+                             expediente['squashfile']+"\n")
+            result+=1
     lastddimage=''
     for expediente,imagem,particao in iterexpedientes():
-      mountpoint=getmountpoint(expediente,imagem,particao)
-      if options.listdd:
-        if lastddimage!=imagem['path']:
-          print(imagem['path'])
+      if not options.operacao or options.operacao==expediente['operacao']:
+        mountpoint=getmountpoint(expediente,imagem,particao)
+        if options.listdd:
+          if lastddimage!=imagem['path']:
+            print(imagem['path'])
           lastddimage=imagem['path']
-      if options.listmnt:
-        print(mountpoint)
-      if options.umountdd:
-        result+=umount(mountpoint)
-      if options.mountdd:
-        result+=ensureddmounted(expediente,imagem,particao)
-      if options.checkpartitions:
-        if not mountpointmounted(mountpoint):
-          sys.stderr.write('mountpoint umounted: '+mountpoint+"\n")
-          result+=1
-      if options.checkfiles:
-        if not mountpointhasfiles(mountpoint):
-          sys.stderr.write('mountpoint has no files: '+mountpoint+"\n")
-          result+=1
+        if options.listmnt:
+          print(mountpoint)
+        if options.umountdd:
+          result+=umount(mountpoint)
+        if options.mountdd:
+          result+=ensureddmounted(expediente,imagem,particao)
+        if options.checkpartitions:
+          if not mountpointmounted(mountpoint):
+            sys.stderr.write('mountpoint umounted: '+mountpoint+"\n")
+            result+=1
+        if options.checkfiles:
+          if not mountpointhasfiles(mountpoint):
+            sys.stderr.write('mountpoint has no files: '+mountpoint+"\n")
+            result+=1
   sys.exit(result)
                       
 if __name__ == '__main__':
