@@ -24,8 +24,8 @@ def iterexpedientes():
       for particao in imagem['particoes']:
         yield(expediente,imagem,particao)
 
-def executar1(cmd,debug=False,norun=False):
-  if norun or debug:
+def executar1(cmd,verbose=False,norun=False):
+  if norun or verbose:
     sys.stderr.write(cmd+"\n")
   if not norun:
     return os.system(cmd)
@@ -73,10 +73,19 @@ def mountpointhasfiles(mountpoint):
   return mountpointexist(mountpoint) and len(os.listdir(mountpoint))>0
 
 def getmountoptions(expediente,imagem,particao):
-  opcoes=[particao['opcoesextra'],
-          config['basicmountoptions'],
+  if particao.has_key('overrideopcoes'):
+    return particao['overrideopcoes']
+  basicoptions = config['typeoptions'][particao['tipo']]
+  offset=''
+  if particao.has_key('offset'):
+    offset="offset="+str(particao['offset'])
+  opcoesextra=''
+  if particao.has_key('opcoesextra'):
+    opcoesextra = particao['opcoesextra']
+  opcoes=[basicoptions,
+          opcoesextra,
           "gid="+expediente['operacao'],
-          "offset="+str(particao['offset'])]
+          offset]
   for x in range(opcoes.count('')):
     opcoes.remove('')
   return ",".join(opcoes)
@@ -139,11 +148,13 @@ def main():
                default="/etc/squash-mount/squash-mount.conf",
                help="defaults to /etc/squash-mount/squash-mount.conf")
   p.add_option('--norun', '-n',action='store_true',default=False)
-  p.add_option('--debug', '-d',action='store_true',default=False,
+  p.add_option('--verbose', '-v',action='store_true',default=False,
                help="print commands to stderr")
   options, arguments = p.parse_args()
   global executar
-  executar=functools.partial(executar1,debug=options.debug,norun=options.norun)
+  executar=functools.partial(executar1,
+                             verbose=options.verbose,
+                             norun=options.norun)
   if not(options.listsquash or
          options.listdd or
          options.listsquashmnt or
@@ -165,7 +176,7 @@ def main():
         if options.listsquashmnt:
           print(expediente['squashmnt'])
         if options.umountsquash:
-          result+=umount(expediente['squashfile'])
+          result+=umount(expediente['squashmnt'])
         if options.mountsquash:
           result+=ensuresquashmounted(expediente)
         if options.checksquash:
@@ -192,9 +203,10 @@ def main():
             sys.stderr.write('mountpoint umounted: '+mountpoint+"\n")
             result+=1
         if options.checkfiles:
-          if not mountpointhasfiles(mountpoint):
-            sys.stderr.write('mountpoint has no files: '+mountpoint+"\n")
-            result+=1
+          if not particao.has_key('nofiles'):
+            if not mountpointhasfiles(mountpoint):
+              sys.stderr.write('mountpoint has no files: '+mountpoint+"\n")
+              result+=1
   sys.exit(result)
                       
 if __name__ == '__main__':
