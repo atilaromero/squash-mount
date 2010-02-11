@@ -12,4 +12,11 @@ start() {
 	eend $? "Failed to mount all squash filesystems"
 }
 
+stop() {
+        ebegin "Umounting squash filesystems"
+        squash-mount.py --umountdd
+        squash-mount.py --umountsquash         
+        eend $? "Failed to umount all squash filesystems"
+}
+
 # vim: ts=4 :
