@@ -37,6 +37,13 @@ def askvar(var,default='',example=''):
   else:
       return result
 
+def askYorN(question):
+  result=''
+  while not (result.lower() == 'y' or result.lower()=='n'):
+    sys.stderr.write(question + ' [y/n]: ')
+    result = sys.stdin.readline().strip()
+  return result.lower()=='y'
+
 def readpartitiontable(ddfilepath):
   particoes=[]
   for line in os.popen('sfdisk -d '+ ddfilepath).readlines()[3:]:
@@ -61,9 +68,11 @@ def printparticoes(fpath):
     if not tipo=='extended':
       offset=particao['offset']
       print("         {'letra':'"+chr(ord('C')+x)+"',")
-      print("#         'nofiles':'',")
       print("          'tipo':'"+tipo+"',")
       print("          'offset':'"+str(offset)+"'},")
+      print("#          'nofiles':'',")
+      print("#          'opcoesextra':'',")
+      print("#          'overrideopcoes':'',")
 
 def getmountpoint(id,equipe,alvo,item,tipo):
   if item:
@@ -126,6 +135,21 @@ def printfile(options,ddfilepaths):
   printimagens(options,ddfilepaths)
   print('    ]')
 
+def mountpointexist(mountpoint):
+  return (os.path.exists(mountpoint) and os.path.isdir(mountpoint))
+
+def mountpointmounted(mountpoint):
+  f=open('/proc/mounts','r')
+  for line in f:
+    a=line.strip().split(" ")
+    if a and len(a)>2:
+      b=a[1]
+      if b==mountpoint:
+        f.close
+        return True
+  f.close
+  return False
+
 def main():
   p = optparse.OptionParser(usage="usage: %prog [options] <ddfiles>")
   p.add_option('--operacao',
@@ -187,6 +211,23 @@ def main():
                              default=config['basemntprefix'] +
                              options.operacao +
                              config['basemntsuffix'])
+
+    if not mountpointexist(options.squashmnt):
+      if askYorN('Automatically create dir ' + options.squashmnt + '?'):
+        os.mkdir(options.squashmnt)
+
+    if not mountpointmounted(options.squashmnt):
+      command='mount '+options.squashfile+' '+options.squashmnt+' -o ro,loop'
+      if askYorN('Run "' + command + '" ?'):
+        executar(command)
+
+    if len(arguments) == 0:
+      if askYorN('Automatically search for images (*/*.dd */*.iso)?'):
+        os.chdir(options.squashmnt)
+        lines=os.popen('find */*.dd */*.iso').readlines()
+        files=[f.strip() for f in lines]
+        if askYorN('Files found:\n'+'\n'.join(files)+'\nUse them?'):
+          arguments=files
 
   ddfilepaths=arguments
   printfile(options,ddfilepaths)
