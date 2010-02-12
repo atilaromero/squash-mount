@@ -30,7 +30,7 @@ def askvar(var,default='',example=''):
   defstr=''
   if default:
     defstr=' ['+default+']'
-  sys.stderr.write('Type value for '+ var + exstr + defstr +': ')
+  sys.stderr.write('Value for '+ var + exstr + defstr +': ')
   result = sys.stdin.readline().strip()
   if result=='':
       return default
@@ -215,7 +215,7 @@ def main():
                              config['basemntsuffix'])
 
     if not mountpointexist(options.squashmnt):
-      if askYorN('Automatically create dir ' + options.squashmnt + '?'):
+      if askYorN('Confirm mkdir of ' + options.squashmnt + '?'):
         os.mkdir(options.squashmnt)
 
     if not mountpointmounted(options.squashmnt):
@@ -224,7 +224,7 @@ def main():
         executar(command)
 
     if len(arguments) == 0:
-      if askYorN('Automatically search for images (*/*.dd */*.iso)?'):
+      if askYorN('Confirm search for file images (*/*.dd */*.iso)?'):
         os.chdir(options.squashmnt)
         lines=os.popen('find */*.dd */*.iso').readlines()
         files=[f.strip() for f in lines]
