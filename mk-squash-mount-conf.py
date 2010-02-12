@@ -197,7 +197,7 @@ def main():
     if options.expediente=='':
       options.expediente=askvar('expediente',
                                 example='R090123, R080021')
-    op_exp='-'.join([options.operacao, options.expediente])
+    op_exp='-'.join([x for x in [options.operacao, options.expediente] if x])
     if options.squashfile=='':
       options.squashfile=askvar('squashfile',
                                 default=config['squashfileprefix'] +
@@ -235,4 +235,7 @@ def main():
   printfile(options,ddfilepaths)
 
 if __name__ == '__main__':
-  main()
+  try:
+    main()
+  except KeyboardInterrupt:
+    sys.exit(0)
