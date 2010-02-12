@@ -195,16 +195,18 @@ def main():
     if options.operacao=='':
       options.operacao=askvar('operacao')
     if options.expediente=='':
-      options.expediente=askvar('expediente',default=options.operacao)
+      options.expediente=askvar('expediente',
+                                example='R090123, R080021')
+    op_exp='-'.join([options.operacao, options.expediente])
     if options.squashfile=='':
       options.squashfile=askvar('squashfile',
                                 default=config['squashfileprefix'] +
-                                options.expediente +
+                                op_exp +
                                 config['squashfilesuffix'])
     if options.squashmnt=='':
       options.squashmnt=askvar('squashmnt',
                                default=config['squashmntprefix'] +
-                               options.expediente +
+                               op_exp +
                                config['squashmntsuffix'])
     if options.basemnt=='':
       options.basemnt=askvar('basemnt',
