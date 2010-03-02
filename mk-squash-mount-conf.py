@@ -69,10 +69,13 @@ def printparticoes(fpath):
       offset=particao['offset']
       print("         {'letra':'"+chr(ord('C')+x)+"',")
       print("          'tipo':'"+tipo+"',")
-      print("          'offset':'"+str(offset)+"'},")
+      print("          'offset':'"+str(offset)+"',")
       print("#          'nofiles':'',")
       print("#          'opcoesextra':'',")
       print("#          'overrideopcoes':'',")
+      print("#          'overridemountpoint':'',")
+      print("#          'bindfs':'"+chr(ord('C')+x)+"',")
+      print("         },")
 
 def getmountpoint(id,equipe,alvo,item,tipo):
   if item:
@@ -122,8 +125,8 @@ def printimagens(options,ddfilepaths):
     print("     'mntpath':basemnt+'/"+getmountpoint(id,equipe,alvo,item,tipo)+"',")
     print("     'particoes':[")
     printparticoes(fpath)
-    print("         ]")
-    print("     },")
+    print("     ]")
+    print("    },")
 
 def printfile(options,ddfilepaths):
   print('#!/usr/bin/python')
@@ -133,7 +136,7 @@ def printfile(options,ddfilepaths):
   print('basemnt="'+ options.basemnt +'"')
   print('imagens=[')
   printimagens(options,ddfilepaths)
-  print('    ]')
+  print(']')
 
 def mountpointexist(mountpoint):
   return (os.path.exists(mountpoint) and os.path.isdir(mountpoint))

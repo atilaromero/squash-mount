@@ -34,7 +34,11 @@ def executar1(cmd,verbose=False,norun=False):
 
 executar=executar1
 
-def getmountpoint(expediente,imagem,particao):
+def getmountpoint(expediente,imagem,particao,letra=''):
+  if particao.has_key('overridemountpoint'):
+    return particao['overridemountpoint']
+  if not letra:
+    letra=particao['letra']
   item=''
   if str(imagem['item']):
     item="item"+str(imagem['item'])
@@ -54,7 +58,11 @@ def getmountpoint(expediente,imagem,particao):
                       imagem['equipe'],
                       imagem['alvo'],
                       nomestr,
-                      particao['letra'])
+                      letra)
+
+def getmntbindfs(expediente,imagem,particao):
+  letra=particao['bindfs']
+  return getmountpoint(expediente,imagem,particao,letra)
 
 def mountpointexist(mountpoint):
   return (os.path.exists(mountpoint) and os.path.isdir(mountpoint))
@@ -95,10 +103,17 @@ def getmountoptions(expediente,imagem,particao):
 def ensureddmounted(expediente,imagem,particao):
   mountpoint=getmountpoint(expediente,imagem,particao)
   if not mountpointmounted(mountpoint):
-    return executar("mount -t "+particao['tipo'] + " "
-                    + imagem['path'] + " "
-                    + mountpoint
-                    + " -o "+getmountoptions(expediente,imagem,particao))
+    result=0
+    result+=executar("mount -t "+particao['tipo'] + " "
+                     + imagem['path'] + " "
+                     + mountpoint
+                     + " -o "+getmountoptions(expediente,imagem,particao))
+    if particao.has_key('bindfs'):
+      mntbindfs=getmntbindfs(expediente,imagem,particao)
+      result+=executar("bindfs -o perms=ug=rX:o-rwx,user=root,group="+expediente['operacao']+ " "
+                       + mountpoint + " "
+                       + mntbindfs)
+    return result
   else:
     return 0
 
@@ -143,6 +158,8 @@ def main():
                help="checks if all partitions are mounted")
   p.add_option('--checkfiles',action='store_true',default=False,
                help="checks if all partitions have files")
+  p.add_option('--mkdirs',action='store_true',default=False,
+               help="create all needed directories (squash and dd mountpoints)")
   p.add_option('--operacao',
                default='',
                help="only consider this operacao")
@@ -177,6 +194,9 @@ def main():
           print(expediente['squashfile'])
         if options.listsquashmnt:
           print(expediente['squashmnt'])
+        if options.mkdirs:
+          if not mountpointexist(expediente['squashmnt']):
+            os.makedirs(expediente['squashmnt'])
         if options.umountsquash:
           result+=umount(expediente['squashmnt'])
         if options.mountsquash:
@@ -190,13 +210,23 @@ def main():
     for expediente,imagem,particao in iterexpedientes():
       if not options.operacao or options.operacao==expediente['operacao']:
         mountpoint=getmountpoint(expediente,imagem,particao)
+        mntbindfs=''
+        if particao.has_key('bindfs'):
+          mntbindfs=getmntbindfs(expediente,imagem,particao)
         if options.listdd:
           if lastddimage!=imagem['path']:
             print(imagem['path'])
           lastddimage=imagem['path']
         if options.listmnt:
           print(mountpoint)
+        if options.mkdirs:
+          if not mountpointexist(mountpoint):
+            os.makedirs(mountpoint)
+          if particao.has_key('bindfs') and not mountpointexist(mntbindfs):
+            os.makedirs(mntbindfs)
         if options.umountdd:
+          if particao.has_key('bindfs'):
+            result+=umount(mntbindfs)
           result+=umount(mountpoint)
         if options.mountdd:
           result+=ensureddmounted(expediente,imagem,particao)
@@ -204,10 +234,16 @@ def main():
           if not mountpointmounted(mountpoint):
             sys.stderr.write('mountpoint umounted: '+mountpoint+"\n")
             result+=1
+          if particao.has_key('bindfs') and not mountpointmounted(mntbindfs):
+            sys.stderr.write('mountpoint umounted: '+mntbindfs+"\n")
+            result+=1
         if options.checkfiles:
           if not particao.has_key('nofiles'):
             if not mountpointhasfiles(mountpoint):
               sys.stderr.write('mountpoint has no files: '+mountpoint+"\n")
+              result+=1
+            if particao.has_key('bindfs') and not mountpointhasfiles(mntbindfs):
+              sys.stderr.write('mountpoint has no files: '+mntbindfs+"\n")
               result+=1
   sys.exit(result)
                       
