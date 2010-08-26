@@ -227,9 +227,9 @@ def main():
         executar(command)
 
     if len(arguments) == 0:
-      if askYorN('Confirm search for file images (*/*.dd */*.iso)?'):
+      if askYorN('Confirm search for file images (*/*.dd */*.iso */*.tao)?'):
         os.chdir(options.squashmnt)
-        lines=os.popen('find */*.dd */*.iso').readlines()
+        lines=os.popen('find */*.dd */*.iso */*.tao').readlines()
         files=[f.strip() for f in lines]
         if askYorN('Files found:\n'+'\n'.join(files)+'\nUse them?'):
           arguments=files
