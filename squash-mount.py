@@ -160,6 +160,8 @@ def main():
                help="checks if all partitions have files")
   p.add_option('--mkdirs',action='store_true',default=False,
                help="create all needed directories (squash and dd mountpoints)")
+  p.add_option('--mklinks',action='store_true',default=False,
+               help="create links to dd images")
   p.add_option('--operacao',
                default='',
                help="only consider this operacao")
@@ -184,7 +186,8 @@ def main():
          options.umountsquash or
          options.checksquash or
          options.checkpartitions or
-         options.checkfiles):
+         options.checkfiles or
+         options.mklinks):
     p.print_help()
   else:
     readconfig(options.configfile)
@@ -213,10 +216,12 @@ def main():
         mntbindfs=''
         if particao.has_key('bindfs'):
           mntbindfs=getmntbindfs(expediente,imagem,particao)
-        if options.listdd:
-          if lastddimage!=imagem['path']:
+        if lastddimage!=imagem['path']:
+          if options.listdd:
             print(imagem['path'])
-          lastddimage=imagem['path']
+          if options.mklinks:
+            executar("ln -s '"+imagem['path']+"' '"+os.path.join(mountpoint,'..')+"'")
+        lastddimage=imagem['path']
         if options.listmnt:
           print(mountpoint)
         if options.mkdirs:
