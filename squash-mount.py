@@ -104,8 +104,8 @@ def ensureddmounted(expediente,imagem,particao):
   mountpoint=getmountpoint(expediente,imagem,particao)
   if not mountpointmounted(mountpoint):
     result=0
-    result+=executar("mount -t "+particao['tipo'] + " "
-                     + imagem['path'] + " "
+    result+=executar("mount -t "+particao['tipo'] + " '"
+                     + imagem['path'] + "' "
                      + mountpoint
                      + " -o "+getmountoptions(expediente,imagem,particao))
     if particao.has_key('bindfs'):
