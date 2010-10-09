@@ -13,6 +13,22 @@ def readconfig(confpath):
   global config
   config=importConfig(confpath)
 
+def readoldconfig(confpath):
+  global oldconfig
+  oldconfig=importConfig(confpath)
+
+def getoldconfig(x,alt=''):
+  if oldconfig.has_key(x):
+    return oldconfig[x]
+  return alt
+
+def getoldconfig3(x,y,z,alt=''):
+  if oldconfig.has_key(x):
+    if oldconfig[x].has_key(y):
+      if oldconfig[x][y].has_key(z):
+        return oldconfig[x][y][z]
+  return alt
+
 def executar1(cmd,verbose=False,norun=False):
   if norun or verbose:
     sys.stderr.write(cmd+"\n")
@@ -78,14 +94,16 @@ def printparticoes(fpath):
       print("         },")
 
 def getmountpoint(id,equipe,alvo,item,tipo):
+  def f(a):
+    return "'+imdict['"+id+"']['"+a+"']+'"
   if item:
-    item="item"+item
-  nome=[item,tipo,id]
+    item='item'+f('item')
+  nome=[item,f('tipo'),f('id')]
   for x in range(nome.count('')):
     nome.remove('')
   nomestr='-'.join(nome)
-  return os.path.join(equipe,
-                      alvo,
+  return os.path.join(f('equipe'),
+                      f('alvo'),
                       nomestr)
 
 def printimagens(options,ddfilepaths):
@@ -106,27 +124,35 @@ def printimagens(options,ddfilepaths):
           return s[0]
         else:
           return ''
-      id=askvar('id',default=getdefault(fpath),example='M104321')
+      id=askvar('id',default=getdefault(fpath),example='M104321,M105678')
         
     if not equipe:
-      equipe=askvar('equipe',example='POA99, SMA88, ZZZ99')
+      equipe=askvar('equipe',
+                    default=getoldconfig3('imdict',id,'equipe'),
+                    example='POA99, SMA88, ZZZ99')
     if not alvo:
-      alvo=askvar('alvo',example='Fulano_de_Tal')
+      alvo=askvar('alvo',
+                  default=getoldconfig3('imdict',id,'alvo'),
+                  example='Fulano_de_Tal')
     if not item:
-      item=askvar('item',example='99, 88')
+      item=askvar('item',
+                  default=getoldconfig3('imdict',id,'item'),
+                  example='99, 88')
     if not tipo:
-      tipo=askvar('tipo',example='HD, pendrive, notebook')
-    print("    {'id':'"+id+"',")
-    print("     'equipe':'"+equipe+"',")
-    print("     'alvo':'"+alvo+"',")
-    print("     'item':'"+item+"',")
-    print("     'tipo':'"+tipo+"',")
-    print("     'path':squashmnt+'/"+fpath+"',")
-    print("     'mntpath':basemnt+'/"+getmountpoint(id,equipe,alvo,item,tipo)+"',")
-    print("     'particoes':[")
+      tipo=askvar('tipo',
+                  default=getoldconfig3('imdict',id,'tipo'),
+                  example='HD, pendrive, notebook')
+    print("imdict['"+id+"']={}")
+    print("imdict['"+id+"']['id']='"+id+"'")
+    print("imdict['"+id+"']['equipe']='"+equipe+"'")
+    print("imdict['"+id+"']['alvo']='"+alvo+"'")
+    print("imdict['"+id+"']['item']='"+item+"'")
+    print("imdict['"+id+"']['tipo']='"+tipo+"'")
+    print("imdict['"+id+"']['path']=squashmnt+'/"+fpath+"'")
+    print("imdict['"+id+"']['mntpath']=basemnt+'/"+getmountpoint(id,equipe,alvo,item,tipo)+"'")
+    print("imdict['"+id+"']['particoes']=[")
     printparticoes(fpath)
     print("     ]")
-    print("    },")
 
 def printfile(options,ddfilepaths):
   print('#!/usr/bin/python')
@@ -134,9 +160,9 @@ def printfile(options,ddfilepaths):
   print('squashfile="'+ options.squashfile +'"')
   print('squashmnt="'+ options.squashmnt +'"')
   print('basemnt="'+ options.basemnt +'"')
-  print('imagens=[')
+  print('imdict={}')
   printimagens(options,ddfilepaths)
-  print(']')
+  print('imagens=imdict.values()')
 
 def mountpointexist(mountpoint):
   return (os.path.exists(mountpoint) and os.path.isdir(mountpoint))
@@ -154,7 +180,7 @@ def mountpointmounted(mountpoint):
   return False
 
 def main():
-  p = optparse.OptionParser(usage="usage: %prog [options] <ddfiles>")
+  p = optparse.OptionParser(usage="usage: %prog [options] <oldconfigfile>")
   p.add_option('--operacao',
                default='')
   p.add_option('--expediente',
@@ -183,58 +209,81 @@ def main():
   p.add_option('--tipo',
                default='',
                help="material tipo")
-  p.add_option('--configfile', '-f',
+  p.add_option('--squashmountconf', '-f',
                default="/etc/squash-mount/squash-mount.conf",
                help="defaults to /etc/squash-mount/squash-mount.conf")
   p.add_option('--noquestions', action='store_true',default=False)
   options, arguments = p.parse_args()
 
-#  if len(arguments) < 1: 
-#    p.print_help()
-#    p.error('too few arguments')
+  if len(arguments) > 1: 
+    p.print_help()
+    p.error('too many arguments')
 
-  readconfig(options.configfile)
+  readconfig(options.squashmountconf)
+  global oldconfig
+  oldconfig={}
+  if len(arguments) > 0 :
+    readoldconfig(arguments[0])
+    if oldconfig.has_key('imagens') and not oldconfig.has_key('imdict'):
+      oldconfig['imdict']={}
+      for x in oldconfig['imagens']:
+        oldconfig['imdict'][x['id']]=x
   if not options.noquestions:
     if options.operacao=='':
-      options.operacao=askvar('operacao')
+      options.operacao=askvar('operacao',default=getoldconfig('operacao'))
     if options.expediente=='':
       options.expediente=askvar('expediente',
+                                default=getoldconfig('expediente'),
                                 example='R090123, R080021')
     op_exp='-'.join([x for x in [options.operacao, options.expediente] if x])
     if options.squashfile=='':
       options.squashfile=askvar('squashfile',
-                                default=config['squashfileprefix'] +
-                                op_exp +
-                                config['squashfilesuffix'])
+                                default=getoldconfig(
+                                  'squashfile',
+                                  config['squashfileprefix'] +
+                                  op_exp +
+                                  config['squashfilesuffix']))
     if options.squashmnt=='':
       options.squashmnt=askvar('squashmnt',
-                               default=config['squashmntprefix'] +
-                               op_exp +
-                               config['squashmntsuffix'])
+                               default=getoldconfig(
+                                 'squashmnt',
+                                 config['squashmntprefix'] +
+                                 op_exp +
+                                 config['squashmntsuffix']))
     if options.basemnt=='':
       options.basemnt=askvar('basemnt',
-                             default=config['basemntprefix'] +
-                             options.operacao +
-                             config['basemntsuffix'])
+                             default=getoldconfig(
+                               'basemnt',
+                               config['basemntprefix'] +
+                               options.operacao +
+                               config['basemntsuffix']))
 
     if not mountpointexist(options.squashmnt):
       if askYorN('Confirm mkdir of ' + options.squashmnt + '?'):
         os.mkdir(options.squashmnt)
+      else:
+        sys.exit(1)
 
     if not mountpointmounted(options.squashmnt):
-      command='mount '+options.squashfile+' '+options.squashmnt+' -o ro,loop'
+      command="mount '"+options.squashfile+"' "+options.squashmnt+' -o ro,loop'
       if askYorN('Run "' + command + '" ?'):
         executar(command)
+      else:
+        sys.exit(1)
 
-    if len(arguments) == 0:
-      if askYorN('Confirm search for file images (*/*.dd */*.iso */*.tao)?'):
-        os.chdir(options.squashmnt)
-        lines=os.popen('find */*.dd */*.iso */*.tao').readlines()
-        files=[f.strip() for f in lines]
-        if askYorN('Files found:\n'+'\n'.join(files)+'\nUse them?'):
-          arguments=files
+    ftypes='*/*.dd */*.iso */*.tao */*.nrg */*.001'
+    if askYorN('Confirm search for file images ('+ftypes+')?'):
+      os.chdir(options.squashmnt)
+      lines=os.popen('find '+ftypes).readlines()
+      files=[f.strip() for f in lines]
+      if askYorN('Files found:\n'+'\n'.join(files)+'\nUse them?'):
+        pass
+      else:
+        sys.exit(1)
+    else:
+      sys.exit(1)
 
-  ddfilepaths=arguments
+  ddfilepaths=files
   printfile(options,ddfilepaths)
 
 if __name__ == '__main__':
