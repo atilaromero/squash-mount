@@ -4,11 +4,14 @@
 
 depend() {
 	use netmount
+	use nfsmount
+	use openvpn.client
 }
 
 start() {
 	ebegin "Mounting squash filesystems"
-	squash-mount.py --mountsquash --mountdd
+	squash-mount.py --mountsquash --mkdir
+	squash-mount.py --mountdd
 	eend $? "Failed to mount all squash filesystems"
 }
 

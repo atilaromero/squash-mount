@@ -71,6 +71,10 @@ def readpartitiontable(ddfilepath):
       particoes.append({'offset':int(start)*512,
                         'size':size,
                         'type':type})
+  if not particoes:
+    particoes.append({'offset':0,
+                      'size':0,
+                      'type':'auto'})
   return particoes
 
 def printparticoes(fpath):
@@ -93,19 +97,6 @@ def printparticoes(fpath):
       print("#          'bindfs':'"+chr(ord('C')+x)+"',")
       print("         },")
 
-def getmountpoint(id,equipe,alvo,item,tipo):
-  def f(a):
-    return "'+imdict['"+id+"']['"+a+"']+'"
-  if item:
-    item='item'+f('item')
-  nome=[item,f('tipo'),f('id')]
-  for x in range(nome.count('')):
-    nome.remove('')
-  nomestr='-'.join(nome)
-  return os.path.join(f('equipe'),
-                      f('alvo'),
-                      nomestr)
-
 def printimagens(options,ddfilepaths):
   for x in range(len(ddfilepaths)):
     fpath=ddfilepaths[x]
@@ -121,7 +112,7 @@ def printimagens(options,ddfilepaths):
       def getdefault(fpath):
         s=fpath.split('/')
         if len(s)>1:
-          return s[0]
+          return s[-2]
         else:
           return ''
       id=askvar('id',default=getdefault(fpath),example='M104321,M105678')
@@ -142,15 +133,17 @@ def printimagens(options,ddfilepaths):
       tipo=askvar('tipo',
                   default=getoldconfig3('imdict',id,'tipo'),
                   example='HD, pendrive, notebook')
+    def f(id,a):
+      return "imdict['"+id+"']['"+a+"']"
     print("imdict['"+id+"']={}")
-    print("imdict['"+id+"']['id']='"+id+"'")
-    print("imdict['"+id+"']['equipe']='"+equipe+"'")
-    print("imdict['"+id+"']['alvo']='"+alvo+"'")
-    print("imdict['"+id+"']['item']='"+item+"'")
-    print("imdict['"+id+"']['tipo']='"+tipo+"'")
-    print("imdict['"+id+"']['path']=squashmnt+'/"+fpath+"'")
-    print("imdict['"+id+"']['mntpath']=basemnt+'/"+getmountpoint(id,equipe,alvo,item,tipo)+"'")
-    print("imdict['"+id+"']['particoes']=[")
+    print(f(id,'id')+"='"+id+"'")
+    print(f(id,'equipe')+"='"+equipe+"'")
+    print(f(id,'alvo')+"='"+alvo+"'")
+    print(f(id,'item')+"='"+item+"'")
+    print(f(id,'tipo')+"='"+tipo+"'")
+    print(f(id,'path')+"=squashmnt+'/"+fpath+"'")
+    print(f(id,'mntpath')+"=basemnt+'/'+makepath(imdict['"+id+"'])")
+    print(f(id,'particoes')+"=[")
     printparticoes(fpath)
     print("     ]")
 
@@ -160,6 +153,18 @@ def printfile(options,ddfilepaths):
   print('squashfile="'+ options.squashfile +'"')
   print('squashmnt="'+ options.squashmnt +'"')
   print('basemnt="'+ options.basemnt +'"')
+  print("""def makepath(dic):
+    item=dic['item']
+    if item and not item.startswith('item'):
+        item='item'+item
+    subresult='-'.join([x for x in [item,
+                                    dic['tipo'],
+                                    dic['id']] if x])
+    result='/'.join([x for x in [dic['equipe'],
+                                 dic['alvo'],
+                                 subresult] if x])
+    
+    return result""")
   print('imdict={}')
   printimagens(options,ddfilepaths)
   print('imagens=imdict.values()')
@@ -271,10 +276,11 @@ def main():
       else:
         sys.exit(1)
 
-    ftypes='*/*.dd */*.iso */*.tao */*.nrg */*.001'
+    ftypes='*.dd *.iso *.tao *.001'
     if askYorN('Confirm search for file images ('+ftypes+')?'):
       os.chdir(options.squashmnt)
-      lines=os.popen('find '+ftypes).readlines()
+      fftypes=' -or '.join([" -iname '"+i+"'" for i in ftypes.split()])
+      lines=os.popen('find * '+fftypes).readlines()
       files=[f.strip() for f in lines]
       if askYorN('Files found:\n'+'\n'.join(files)+'\nUse them?'):
         pass

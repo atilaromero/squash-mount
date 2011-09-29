@@ -197,12 +197,12 @@ def main():
           print(expediente['squashfile'])
         if options.listsquashmnt:
           print(expediente['squashmnt'])
-        if options.mkdirs:
-          if not mountpointexist(expediente['squashmnt']):
-            os.makedirs(expediente['squashmnt'])
         if options.umountsquash:
           result+=umount(expediente['squashmnt'])
         if options.mountsquash:
+          if options.mkdirs:
+            if not mountpointexist(expediente['squashmnt']):
+              os.makedirs(expediente['squashmnt'])
           result+=ensuresquashmounted(expediente)
         if options.checksquash:
           if not mountpointmounted(expediente['squashmnt']):
@@ -224,16 +224,16 @@ def main():
         lastddimage=imagem['path']
         if options.listmnt:
           print(mountpoint)
-        if options.mkdirs:
-          if not mountpointexist(mountpoint):
-            os.makedirs(mountpoint)
-          if particao.has_key('bindfs') and not mountpointexist(mntbindfs):
-            os.makedirs(mntbindfs)
         if options.umountdd:
           if particao.has_key('bindfs'):
             result+=umount(mntbindfs)
           result+=umount(mountpoint)
         if options.mountdd:
+          if options.mkdirs:
+            if not mountpointexist(mountpoint):
+              os.makedirs(mountpoint)
+            if particao.has_key('bindfs') and not mountpointexist(mntbindfs):
+              os.makedirs(mntbindfs)
           result+=ensureddmounted(expediente,imagem,particao)
         if options.checkpartitions:
           if not mountpointmounted(mountpoint):
