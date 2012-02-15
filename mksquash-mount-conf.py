@@ -72,9 +72,10 @@ def readpartitiontable(ddfilepath):
                         'size':size,
                         'type':type})
   if not particoes:
+    tipoparticao='auto'
     particoes.append({'offset':0,
                       'size':0,
-                      'type':'auto'})
+                      'type':tipoparticao})
   return particoes
 
 def printparticoes(fpath):
@@ -84,7 +85,10 @@ def printparticoes(fpath):
     if config['partitiontypes'].has_key(particao['type']):
       tipo=config['partitiontypes'][particao['type']]
     else:
-      tipo='auto'
+      if fpath[-4:]=='.tao' or fpath[-4:]=='.iso':
+        tipo='iso9660'
+      else:
+        tipo='auto'
     if not tipo=='extended':
       offset=particao['offset']
       print("         {'letra':'"+chr(ord('C')+x)+"',")
@@ -98,51 +102,38 @@ def printparticoes(fpath):
       print("         },")
 
 def printimagens(options,ddfilepaths):
+  def getid(fpath):
+    s=fpath.split('/')
+    if len(s)>1:
+      return s[-2]
+    else:
+      return ''
+  def f(id,a):
+    return "imdict['"+id+"']['"+a+"']"
+
+  print("materiais=[#[id,equipe,item,tipo,alvo,imagem] ")
   for x in range(len(ddfilepaths)):
     fpath=ddfilepaths[x]
-    sys.stderr.write('\n')
-    sys.stderr.write('Processing image ' + fpath + '\n')
+    ximagem=os.path.basename(fpath)
+    id=options.id or getid(fpath)
+    print("    ['%s','','','','','%s'],"%(id,ximagem))
+  print("""    ]
 
-    id=options.id
-    equipe=options.equipe
-    alvo=options.alvo
-    item=options.item
-    tipo=options.tipo
-    if not id:
-      def getdefault(fpath):
-        s=fpath.split('/')
-        if len(s)>1:
-          return s[-2]
-        else:
-          return ''
-      id=askvar('id',default=getdefault(fpath),example='M104321,M105678')
-        
-    if not equipe:
-      equipe=askvar('equipe',
-                    default=getoldconfig3('imdict',id,'equipe'),
-                    example='POA99, SMA88, ZZZ99')
-    if not alvo:
-      alvo=askvar('alvo',
-                  default=getoldconfig3('imdict',id,'alvo'),
-                  example='Fulano_de_Tal')
-    if not item:
-      item=askvar('item',
-                  default=getoldconfig3('imdict',id,'item'),
-                  example='99, 88')
-    if not tipo:
-      tipo=askvar('tipo',
-                  default=getoldconfig3('imdict',id,'tipo'),
-                  example='HD, pendrive, notebook')
-    def f(id,a):
-      return "imdict['"+id+"']['"+a+"']"
-    print("imdict['"+id+"']={}")
-    print(f(id,'id')+"='"+id+"'")
-    print(f(id,'equipe')+"='"+equipe+"'")
-    print(f(id,'alvo')+"='"+alvo+"'")
-    print(f(id,'item')+"='"+item+"'")
-    print(f(id,'tipo')+"='"+tipo+"'")
-    print(f(id,'path')+"=squashmnt+'/"+fpath+"'")
-    print(f(id,'mntpath')+"=basemnt+'/'+makepath(imdict['"+id+"'])")
+for x in materiais:
+    xid,xequipe,xitem,xtipo,xalvo,ximagem=x
+    imdict[xid]={}
+    imdict[xid]['id']=xid
+    imdict[xid]['equipe']=xequipe
+    imdict[xid]['alvo']=xalvo
+    imdict[xid]['item']=xitem
+    imdict[xid]['tipo']=xtipo
+    imdict[xid]['imagem']=ximagem
+    imdict[xid]['path']=squashmnt+'/%s/%s'%(xid,ximagem)
+    imdict[xid]['mntpath']=basemnt+'/'+makepath(imdict[xid])
+""")
+  for x in range(len(ddfilepaths)):
+    fpath=ddfilepaths[x]
+    id=options.id or getid(fpath)
     print(f(id,'particoes')+"=[")
     printparticoes(fpath)
     print("     ]")
@@ -164,8 +155,9 @@ def printfile(options,ddfilepaths):
                                  dic['alvo'],
                                  subresult] if x])
     
-    return result""")
-  print('imdict={}')
+    return result
+imdict={}
+""")
   printimagens(options,ddfilepaths)
   print('imagens=imdict.values()')
 
