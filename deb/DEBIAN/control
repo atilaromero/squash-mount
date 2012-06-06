@@ -1,0 +1,9 @@
+Package: squash-mount
+Version: 2
+Section: extra
+Priority: optional
+Architecture: amd64
+Depends: python
+Installed-Size: 36k
+Maintainer: Atila Romero
+Description: Utilities to mount squash files.

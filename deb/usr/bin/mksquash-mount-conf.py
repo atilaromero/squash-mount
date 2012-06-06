@@ -268,7 +268,7 @@ def main():
       else:
         sys.exit(1)
 
-    ftypes='*.dd *.iso *.tao *.001'
+    ftypes='*.dd *.iso *.tao *.001 *.img'
     if askYorN('Confirm search for file images ('+ftypes+')?'):
       os.chdir(options.squashmnt)
       fftypes=' -or '.join([" -iname '"+i+"'" for i in ftypes.split()])
