@@ -2,24 +2,30 @@ SUBDIRS=
 OPERACAO=
 MKFSTAB=/git/triagem/mkfstab.py
 MOUNTFSTAB=/git/triagem/mountfstab.py
-DEFAULTDDOPTIONS=ro,iocharset=utf8
+DEFAULTDDOPTIONS=ro,iocharset=utf8,umask=0227
 DEFAULTSQUASHOPTIONS=ro,umask=227,_netdev,noexec,uid=root,gid=root,loop
 DDEXTREGEXPR='\.dd$$\|\.img$$\|\.001$$\|\.iso$$\|\.tao$$'
 #DEFAULTMNT='equipeXX/itemXX-tipo(HD,pendrive)-NumMaterial/'
 DEFAULTMNT='XXX/itemXX-XX-MXXXX/'
 
-.PHONY: dd squash umountdd umountsquash squash subdirs $(SUBDIRS)
+.PHONY: checkop dd squash umountdd umountsquash squash subdirs $(SUBDIRS)
 
 #subdirs: $(SUBDIRS) dd
 #$(SUBDIRS):
 #	$(MAKE) -f $@/Makefile
 
-dd: squash dd.fstab
+dd: checkop squash dd.fstab
 	$(MOUNTFSTAB) --mkdir -v dd.fstab
+
+checkop:
+ifeq ($(strip $(OPERACAO)), )
+	@echo preencha o nome da operacao no arquivo Makefile
+	exit 1
+endif
 
 dd.fstab: dd.list
 	sed -e '/^ *$$/d' dd.list | while read ddfile ddmnt ;\
-	do mkdir -p -m 550 $$ddmnt ;\
+	do mkdir -p $$ddmnt ;\
 	$(MKFSTAB) $$ddfile --basemountdir=$$ddmnt \
 	  --appendoptions=$(DEFAULTDDOPTIONS),gid=$(OPERACAO) ;\
 	done > dd.fstab
@@ -55,8 +61,8 @@ squash.list:
 
 umount umountsquash: umountdd
 	sed -e '/^ *$$/d' squash.fstab | while read file mnt rest ;\
-	do umount $$mnt || echo -n ; done
+	do umount -v $$mnt || echo -n ; done
 
 umountdd:
 	sed -e '/^ *$$/d' dd.fstab | while read file mnt rest ;\
-	do umount $$mnt || echo -n; done
+	do umount -v $$mnt || echo -n; done
